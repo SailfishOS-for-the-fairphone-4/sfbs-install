@@ -1,0 +1,8 @@
+git
+curl
+ccache
+git 
+chroot 
+wget 
+bzip2
+cpio
