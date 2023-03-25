@@ -42,8 +42,6 @@ start_install(){
 	cd $SFB_ROOT
 	./sfbootstrap.sh init 
 	./sfbootstrap.sh status
-	./sfbootstrap.sh chroot setup
-	./sfbootstrap.sh sync
 	cd ..
 }
 get_version() { 

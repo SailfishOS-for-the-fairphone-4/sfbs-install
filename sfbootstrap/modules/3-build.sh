@@ -92,6 +92,7 @@ sfb_build_packages() {
 		sfb_hook_exec pre-build-mw
 		echo 'all' | sfb_chroot sfossdk sh -c "$SFB_BP --mw" || return 1
 		sfb_hook_exec post-build-mw
+		
 		if [ "$PORT_TYPE" = "hybris" ]; then
 			if [ -f "$ANDROID_PRODUCT_OUT/system/lib/libdroidmedia.so" ]; then
 				sfb_log "Fetching tags for droidmedia..."
