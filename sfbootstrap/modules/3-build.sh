@@ -96,9 +96,10 @@ sfb_setup_rpm_build_packages(){
 
 sfb_build_packages() {
 	local cmd=()
+	
+	sfb_setup_rpm_build_packages droid-hal-device droid-configs droid-hal-version-FP4 || return
 	if [ ! -e "$ANDROID_ROOT/$SFB_BP" ]; then
 		sfb_log "Device sources aren't properly setup (missing droid-hal-$DEVICE)!"
-		sfb_setup_rpm_build_packages droid-hal-device droid-configs droid-hal-version-FP4 || return
 	fi
 	
 	sfb_hook_exec pre-build-packages "$@"
@@ -124,7 +125,6 @@ sfb_build_packages() {
 				sfb_log "Fetching tags for droidmedia..."
 				git -C "$ANDROID_ROOT/external/droidmedia" fetch --all --tags
 				sfb_hook_exec pre-build-gg
-				mv out/ /usr/libexec/droid-hybris/system/etc/init/hybris_extra.rc
 				sfb_chroot sfossdk sh -c "$SFB_BP --gg" || return 1
 				sfb_hook_exec post-build-gg
 			else

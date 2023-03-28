@@ -130,7 +130,7 @@ sfb_sync_hybris_repos() {
 
 	if [ ! -d "$SFB_LOCAL_MANIFESTS" ]; then
 		sfb_log "Initializing $SFB_LOCAL_MANIFESTS..."
-		mkdir -p $SFB_LOCAL_MANIFESTS && mv $ANDROID_ROOT/.repo/manifests/FP4.xml $SFB_LOCAL_MANIFESTS/FP4.xml || return
+		mkdir -p $SFB_LOCAL_MANIFESTS && cp $ANDROID_ROOT/.repo/manifests/FP4.xml $SFB_LOCAL_MANIFESTS/FP4.xml || return
 	fi	
 			
 	if sfb_manual_hybris_patches_applied; then
@@ -139,6 +139,9 @@ sfb_sync_hybris_repos() {
 		sfb_chroot habuild "repo sync -l" || return 1
 	fi
 	
+	sfb_log "Cloning Libhybris into external"
+	sfb_git_clone_or_pull -b "android11" -u "git@github.com:mer-hybris/libhybris.git" -d "$ANDROID_ROOT/external/libhybris"
+
 	sfb_log "Syncing $branch source tree with $SFB_JOBS jobs..."
 	if [ $(echo $ANDROID_ROOT/*/ | wc -w) -le $(echo $ANDROID_ROOT/.repo/projects/*/ | wc -w) ]; then
 		if [ ! -f "$ANDROID_ROOT/.repo/project.list" ]; then
