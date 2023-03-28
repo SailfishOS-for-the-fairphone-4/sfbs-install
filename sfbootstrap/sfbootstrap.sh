@@ -12,7 +12,7 @@
 
 # Constants
 ############
-SFB_LATEST_SFOS_RELEASE="4.5.0.18"
+SFB_LATEST_SFOS_RELEASE="4.3.0.12"
 SFB_SUPPORTED_HYBRIS_VERS="10.1 11.0 12.1 13.0 14.1 15.1 16.0 17.1 18.1"
 SFB_KNOWN_CONFIG_VARS=(
 	ANDROID_MAJOR_VERSION DEVICE HABUILD_DEVICE HAL_MAKE_TARGETS HAL_ENV_EXTRA HYBRIS_VER PORT_ARCH PORT_TYPE
@@ -106,7 +106,7 @@ PORT_TYPE=$PORT_TYPE"
 		if [ "$PORT_TYPE" = "hybris" ]; then
 			echo "HYBRIS_VER=$HYBRIS_VER
 ANDROID_MAJOR_VERSION=$(sfb_get_droid_major_ver)
-REPO_INIT_URL=\"https://github.com/SailfishOS-for-the-fairphone-4/android.git\"
+REPO_INIT_URL=\"https://github.com/Sailfishos-for-the-fairphone-4/android.git\"
 #REPO_LOCAL_MANIFESTS_URL=\"\"
 #REPO_OVERRIDES=()
 #HYBRIS_PATCHER_SCRIPTS=()
@@ -159,10 +159,10 @@ sfb_device_env() {
 		: ${HABUILD_DEVICE:=$DEVICE}
 		: ${HOOKS_DEVICE:=$SFB_DEVICE}
 		: ${HAL_MAKE_TARGETS:=hybris-hal droidmedia}
-		: ${REPO_INIT_URL:=https://github.com/SailfishOS-for-the-fairphone-4/android.git}
+		: ${REPO_INIT_URL:=https://github.com/Sailfishos-for-the-fairphone-4/android.git}
 		if [ $ANDROID_MAJOR_VERSION -ge 9 ]; then
 			HYBRIS_PATCHER_SCRIPTS=(
-				"hybris-patches/apply-patches.sh --mb" "grep -q droid-hybris system/core/init/init.cpp"
+				"hybris-patches/apply-patches.sh --mb" "grep -q droid-hybris src/hybris-18.1/system/core/init/init.cpp"
 				"${HYBRIS_PATCHER_SCRIPTS[@]}"
 			)
 		fi

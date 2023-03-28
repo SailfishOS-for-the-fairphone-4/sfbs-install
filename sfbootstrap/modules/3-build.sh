@@ -31,7 +31,7 @@ sfb_build_hal() {
 		sfb_error "Sources for hybris-$HYBRIS_VER aren't synced!"
 	fi
 	[ $# -gt 0 ] && targets=($@) || targets=(${HAL_MAKE_TARGETS[*]})
-	#sfb_build_hal_apply_patches || sfb_error "Applying hybris patches failed!"
+	sfb_build_hal_apply_patches || sfb_error "Applying hybris patches failed!"
 	sfb_hook_exec pre-build-hal
 	sfb_log "Building HAL components '${targets[*]}' with $SFB_JOBS jobs for $HABUILD_DEVICE..."
 	if [ $ANDROID_MAJOR_VERSION -ge 10 ]; then
@@ -40,6 +40,9 @@ sfb_build_hal() {
 	if [ "$HAL_ENV_EXTRA" ]; then
 		extra_cmds+=" && $HAL_ENV_EXTRA"
 	fi
+	# fix removal of Etar.
+	sfb_chroot habuild "sed  -i \"s/CalendarTests/CalendarCommonTests/\" platform_testing/build/tasks/tests/platform_test_list.mk"
+	
 	sfb_chroot habuild ". build/envsetup.sh && breakfast $HABUILD_DEVICE$extra_cmds && make -j$SFB_JOBS ${targets[*]}" || return 1
 	if sfb_array_contains "^libbiometry_fp_api" "${targets[@]}"; then
 		sfb_log "Copying built sailfish-fpd-community HAL files..."
@@ -67,13 +70,37 @@ sfb_move_artifacts() {
 	done
 	sfb_log "Done!"
 }
+
+sfb_setup_rpm_build_packages(){
+	local HYBRIS="hybris"
+		GIT_URL="git@github.com:SailfishOS-for-the-fairphone-4/"
+	# droid-hal-device into rpm	
+	sfb_log "Cloning $1 into rpm"
+	
+	sfb_git_clone_or_pull -u "$GIT_URL$1-$DEVICE.git" -d "$ANDROID_ROOT/rpm"
+	sfb_chroot sfossdk sh -c "$(echo "$SFB_BP" | sed "s/build_packages/add_new_device/")"
+	
+	for pkgs in $(seq 2 $#); do
+		name="${!pkgs}"
+		if [ "${name: -3}" != "$DEVICE" ]; then
+			name+="-$DEVICE"
+		fi
+		name+=".git"
+		sfb_log "Cloning $name into /$HYBRIS/${!pkgs}"
+		sfb_git_clone_or_pull -u "$GIT_URL$name" -d "$ANDROID_ROOT/$HYBRIS/${!pkgs}"
+	done
+	
+	sfb_chroot sfossdk sh -c "yes | sudo zypper install ccache "
+	cp chroot/sdks/sfossdk/usr/bin/ccache chroot/targets/*/usr/bin/
+}
+
 sfb_build_packages() {
 	local cmd=()
-	echo "$ANDROID_ROOT/$SFB_BP"
 	if [ ! -e "$ANDROID_ROOT/$SFB_BP" ]; then
 		sfb_log "Device sources aren't properly setup (missing droid-hal-$DEVICE)!"
-		return
+		sfb_setup_rpm_build_packages droid-hal-device droid-configs droid-hal-version-FP4 || return
 	fi
+	
 	sfb_hook_exec pre-build-packages "$@"
 	if [ $# -gt 0 ]; then
 		cmd=($SFB_BP "$@")
@@ -90,14 +117,14 @@ sfb_build_packages() {
 		sfb_chroot sfossdk sh -c "sb2 -t $VENDOR-$DEVICE-$PORT_ARCH -m sdk-install -R zypper -n install droid-config-$DEVICE"
 
 		sfb_hook_exec pre-build-mw
-		echo 'all' | sfb_chroot sfossdk sh -c "$SFB_BP --mw" || return 1
+		 echo 'all' | sfb_chroot sfossdk sh -c "$SFB_BP --mw" || return 1
 		sfb_hook_exec post-build-mw
-		
 		if [ "$PORT_TYPE" = "hybris" ]; then
 			if [ -f "$ANDROID_PRODUCT_OUT/system/lib/libdroidmedia.so" ]; then
 				sfb_log "Fetching tags for droidmedia..."
 				git -C "$ANDROID_ROOT/external/droidmedia" fetch --all --tags
 				sfb_hook_exec pre-build-gg
+				mv out/ /usr/libexec/droid-hybris/system/etc/init/hybris_extra.rc
 				sfb_chroot sfossdk sh -c "$SFB_BP --gg" || return 1
 				sfb_hook_exec post-build-gg
 			else

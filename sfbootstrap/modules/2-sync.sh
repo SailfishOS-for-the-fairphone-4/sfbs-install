@@ -89,7 +89,7 @@ sfb_sync_hybris_repos() {
 	if sfb_array_contains "^\-(s|\-shallow)$" "$@"; then
 		extra_init_args+=" --depth 1"
 	fi
-
+	sfb_chroot habuild "repo init -u $REPO_INIT_URL -b $branch --platform=linux$extra_init_args" || return 1
 	if [ ! -d "$ANDROID_ROOT/.repo" ]; then
 		#sfb_hook_exec pre-repo-init
 		sfb_log "Initializing new $branch source tree..."
@@ -128,17 +128,23 @@ sfb_sync_hybris_repos() {
 		sfb_write_if_different "$xml" "$SFB_OVERRIDES_XML"
 	fi
 
+	if [ ! -d "$SFB_LOCAL_MANIFESTS" ]; then
+		sfb_log "Initializing $SFB_LOCAL_MANIFESTS..."
+		mkdir -p $SFB_LOCAL_MANIFESTS && mv $ANDROID_ROOT/.repo/manifests/FP4.xml $SFB_LOCAL_MANIFESTS/FP4.xml || return
+	fi	
+			
 	if sfb_manual_hybris_patches_applied; then
 		sfb_prompt "Applied hybris patches detected; run 'repo sync -l' & discard ALL local changes (y/N)?" ans "$SFB_YESNO_REGEX" "$ans"
 		[[ "${ans^^}" != "Y"* ]] && return
 		sfb_chroot habuild "repo sync -l" || return 1
 	fi
-
-
+	
 	sfb_log "Syncing $branch source tree with $SFB_JOBS jobs..."
-	if [ ! -f "$ANDROID_ROOT/.repo/project.list" ]; then
-		sfb_log "Building the source tree with --fetch-submodules"
-		sfb_chroot habuild "repo sync -c -j$SFB_JOBS --fetch-submodules --no-clone-bundle --no-tags"
+	if [ $(echo $ANDROID_ROOT/*/ | wc -w) -le $(echo $ANDROID_ROOT/.repo/projects/*/ | wc -w) ]; then
+		if [ ! -f "$ANDROID_ROOT/.repo/project.list" ]; then
+			sfb_log "Building with --fetch-submodules"
+			sfb_chroot habuild "repo sync -c -j$SFB_JOBS --fail-fast --fetch-submodules --no-clone-bundle --no-tags"
+		fi
 	fi
 	sfb_chroot habuild "repo sync -j$SFB_JOBS --force-sync" || return 1
 
