@@ -1,13 +1,12 @@
 #!/bin/sh
 
-
 usage() {
 cat << EOF
 Usage: $0 [OPTION] ..."
 	-h, --help			You're reading it
 	-p, --install-all-packages	Install all the needed packages
-	-i, --install		
-      	-v, --version			Get the current version
+	-i, --install			Start the main build process
+      	-v, --version			Get the current sfbs-install version
 EOF
 }
 
@@ -15,10 +14,16 @@ OPTIONS=$(getopt -o hpiv -l help,install-all-packages,do-not-install,version,ins
 
 if [ $? -ne 0 ]; then
     echo "getopt error"
-    exit 1
 fi
 
 unset INSTALL_PACKAGES FULL_INSTALL GET_VERSION INSTALL TARGET
+
+if [[ $# -eq 0 && -z "$1" ]]; then
+    INSTALL_PACKAGES=1
+    FULL_INSTALL=1 
+    TARGET="fullbuild"
+fi
+
 eval set -- $OPTIONS
 while true; do
     case "$1" in
@@ -29,7 +34,8 @@ while true; do
 		      	*) INSTALL=1 ;;
 		    esac ;;
       -v|--version) GET_VERSION=1 ;;
-      --)        shift ; break ;;
+      --) shift ; break ;;
+      *)         echo "Unknown option: $1" ; usage ;;
     esac
     shift
 done
@@ -41,6 +47,7 @@ done
 # Add docker support
 # DEPRECATED
 # no provider fo droid-configs
+# no force if succes fetch
 
 # DONE
 # Check Git-SSH
@@ -50,7 +57,7 @@ done
 # auto color.ui
 # rework setup.sh and utils.sh
 # hybris AFTER repo sync. So the 
-# no force if succes fetch
+
 # pybind remove
 # check for || return 
 # automated Echo's for auto color?
@@ -67,15 +74,14 @@ minstall() { echo -e "\e[01;33m* $* \e[00m"
 minfo() { echo -e "\e[01;34m* $* \e[00m" 
 }
 
-
 silent(){
 	"$@"&>/dev/null
 }
 
 install_packages() {
 	minstall "Updating/Upgrading package Manager..."
-	silent sudo apt-get update 
-	echo y | silent sudo apt-get upgrade
+	silent sudo apt-get update || return
+	echo y | silent sudo apt-get upgrade || return
 	pkgs=""
 	while IFS= read -r pkg
 	do
@@ -83,7 +89,7 @@ install_packages() {
 	done < "$INPUTPKGS"
 	
 	minstall "Installing: $pkgs"
-	echo y | sudo apt-get install $pkgs
+	echo y | sudo apt-get install $pkgs || return
 }
 
 
@@ -135,8 +141,12 @@ get_version(){
 }
 
 main(){
-	[ "$GET_VERSION" ] && get_version;
-	[ "$INSTALL_PACKAGES" ] && install_packages;
+	if [ "$GET_VERSION" ]; then
+		get_version || return
+	fi
+	if [ "$INSTALL_PACKAGES" ]; then
+		install_packages || return
+	fi
 	[[ "$INSTALL"  || "$FULL_INSTALL" ]] && start_installer $1;
 }
 

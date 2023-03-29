@@ -73,25 +73,25 @@ sfb_setup_rpm_build_packages(){
 	local HYBRIS="hybris"
 		GIT_URL="git@github.com:SailfishOS-for-the-fairphone-4/"
 	
+	sfb_log "$ANDROID_ROOT"
+	sfb_log $(pwd)
 	sfb_log "Cloning needed RPM packages..."	
 	for pkgs in $(seq 1 $#); do
 		name="${!pkgs}"
 		dest="$ANDROID_ROOT/$HYBRIS/${!pkgs}"
-		
-		[ "$name" -eq "droid-hal-device" ] && dest="$ANDROID_ROOT/rpm"
-		
+		[[ "$name" == "droid-hal-device" ]] && dest="$ANDROID_ROOT/rpm"
 		if [ "${name: -3}" != "$DEVICE" ]; then
 			name+="-$DEVICE"
 		fi 
 		name+=".git"
-		
 		sfb_log "Cloning $name"
-		silent sfb_git_clone_or_pull -u "$GIT_URL$name" -d "$dest"
+		sfb_git_clone_or_pull -u "$GIT_URL$name" -d "$dest" || return
 	done
-	sfb_chroot sfossdk sh -c "$(echo "$SFB_BP" | sed "s/build_packages/add_new_device/")"
 	
-	sfb_chroot sfossdk sh -c "yes | sudo zypper install ccache "
-	cp chroot/sdks/sfossdk/usr/bin/ccache chroot/targets/$DEVICE/usr/bin/
+	sfb_chroot sfossdk sh -c "echo y | $(echo "$SFB_BP" | sed "s/build_packages/add_new_device/")" || return
+	
+	sfb_chroot sfossdk sh -c "yes | sudo zypper install ccache "|| return
+	cp chroot/sdks/sfossdk/usr/bin/ccache chroot/targets/*/usr/bin/ccache
 }
 
 sfb_build_packages() {
@@ -116,7 +116,7 @@ sfb_build_packages() {
 		sfb_hook_exec post-build-dcd
 
 		# Required to e.g. install droid-hal-version-$DEVICE & droidmedia on target
-		sfb_chroot sfossdk sh -c "sb2 -t $VENDOR-$DEVICE-$PORT_ARCH -m sdk-install -R zypper -n install droid-config-$DEVICE"
+		#sfb_chroot sfossdk sh -c "sb2 -t $VENDOR-$DEVICE-$PORT_ARCH -m sdk-install -R zypper -n install droid-config-$DEVICE"
 
 		sfb_hook_exec pre-build-mw
 		 echo 'all' | sfb_chroot sfossdk sh -c "$SFB_BP --mw" || return 1

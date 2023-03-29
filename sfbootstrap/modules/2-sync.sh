@@ -138,15 +138,14 @@ sfb_sync_hybris_repos() {
 		sfb_chroot habuild "repo sync -l" || return 1
 	fi
 	
-	local fs_succes=""
+	fs_succes=""
 	sfb_log "Syncing $branch source tree with $SFB_JOBS jobs..."
 	if [ $(echo $ANDROID_ROOT/*/ | wc -w) -le $(echo $ANDROID_ROOT/.repo/projects/*/ | wc -w) ]; then
 		if [ ! -f "$ANDROID_ROOT/.repo/project.list" ]; then
 			sfb_log "Syncing $branch source tree with --fetch-submodules"
 			sfb_chroot habuild "repo sync -c -j$SFB_JOBS --fail-fast --fetch-submodules --no-clone-bundle --no-tags"; fs_succes="$?"
-		fi
-	fi	
-	if [[ "$fs_succes" -eq 0 ]]; then
+		fi	
+	elif [[ -d "$ANDROID_ROOT/.repo/manifests" || "$fs_succes" -eq 0 ]]; then
 		sfb_log "Syncing $branch source tree with --force-sync"
 		sfb_chroot habuild "repo sync -j$SFB_JOBS --force-sync" || return 1
 	fi
