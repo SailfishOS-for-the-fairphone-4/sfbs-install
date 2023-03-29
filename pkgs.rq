@@ -1,8 +1,6 @@
 git
 curl
 ccache
-git 
-chroot 
-wget 
+wget
 bzip2
 cpio

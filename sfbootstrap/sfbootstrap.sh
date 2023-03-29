@@ -162,7 +162,7 @@ sfb_device_env() {
 		: ${REPO_INIT_URL:=https://github.com/Sailfishos-for-the-fairphone-4/android.git}
 		if [ $ANDROID_MAJOR_VERSION -ge 9 ]; then
 			HYBRIS_PATCHER_SCRIPTS=(
-				"hybris-patches/apply-patches.sh --mb" "grep -q droid-hybris src/hybris-18.1/system/core/init/init.cpp"
+				"hybris-patches/apply-patches.sh --mb" "grep -q droid-hybris sfbootstrap/src/hybris-18.1/system/core/init/init.cpp"
 				"${HYBRIS_PATCHER_SCRIPTS[@]}"
 			)
 		fi

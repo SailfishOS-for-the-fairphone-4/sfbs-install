@@ -8,7 +8,6 @@ sfb_build_hal_apply_patches() {
 		return # already applied
 	fi
 
-	#sfb_hook_exec pre-build-patches
 	for i in $(seq 0 2 $((${#HYBRIS_PATCHER_SCRIPTS[@]}-1))); do
 		patch_cmd="${HYBRIS_PATCHER_SCRIPTS[$i]}"
 		script="${patch_cmd%% *}" # drop args
@@ -19,7 +18,6 @@ sfb_build_hal_apply_patches() {
 		sfb_log "Running '$patch_cmd'..."
 		sfb_chroot habuild "$patch_cmd" || return 1
 	done
-	#sfb_hook_exec post-build-patches
 }
 sfb_build_hal() {
 	local targets extra_cmds=""
@@ -54,7 +52,7 @@ sfb_build_hal() {
 	fi
 	sfb_hook_exec post-build-hal
 }
-sfb_build_kernel() { sfb_build_hal hybris-boot; }
+sfb_build_kernel() { sfb_build_hal hybris-boot hybris-recovery; }
 
 sfb_move_artifacts() {
 	local f
@@ -74,32 +72,35 @@ sfb_move_artifacts() {
 sfb_setup_rpm_build_packages(){
 	local HYBRIS="hybris"
 		GIT_URL="git@github.com:SailfishOS-for-the-fairphone-4/"
-	# droid-hal-device into rpm	
-	sfb_log "Cloning $1 into rpm"
 	
-	sfb_git_clone_or_pull -u "$GIT_URL$1-$DEVICE.git" -d "$ANDROID_ROOT/rpm"
-	sfb_chroot sfossdk sh -c "$(echo "$SFB_BP" | sed "s/build_packages/add_new_device/")"
-	
-	for pkgs in $(seq 2 $#); do
+	sfb_log "Cloning needed RPM packages..."	
+	for pkgs in $(seq 1 $#); do
 		name="${!pkgs}"
+		dest="$ANDROID_ROOT/$HYBRIS/${!pkgs}"
+		
+		[ "$name" -eq "droid-hal-device" ] && dest="$ANDROID_ROOT/rpm"
+		
 		if [ "${name: -3}" != "$DEVICE" ]; then
 			name+="-$DEVICE"
-		fi
+		fi 
 		name+=".git"
-		sfb_log "Cloning $name into /$HYBRIS/${!pkgs}"
-		sfb_git_clone_or_pull -u "$GIT_URL$name" -d "$ANDROID_ROOT/$HYBRIS/${!pkgs}"
+		
+		sfb_log "Cloning $name"
+		silent sfb_git_clone_or_pull -u "$GIT_URL$name" -d "$dest"
 	done
+	sfb_chroot sfossdk sh -c "$(echo "$SFB_BP" | sed "s/build_packages/add_new_device/")"
 	
 	sfb_chroot sfossdk sh -c "yes | sudo zypper install ccache "
-	cp chroot/sdks/sfossdk/usr/bin/ccache chroot/targets/*/usr/bin/
+	cp chroot/sdks/sfossdk/usr/bin/ccache chroot/targets/$DEVICE/usr/bin/
 }
 
 sfb_build_packages() {
 	local cmd=()
 	
-	sfb_setup_rpm_build_packages droid-hal-device droid-configs droid-hal-version-FP4 || return
+	# if the RPM-folder is missing
 	if [ ! -e "$ANDROID_ROOT/$SFB_BP" ]; then
 		sfb_log "Device sources aren't properly setup (missing droid-hal-$DEVICE)!"
+		sfb_setup_rpm_build_packages droid-hal-device droid-configs droid-hal-version-FP4 || return
 	fi
 	
 	sfb_hook_exec pre-build-packages "$@"

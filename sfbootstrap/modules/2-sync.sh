@@ -89,8 +89,7 @@ sfb_sync_hybris_repos() {
 	if sfb_array_contains "^\-(s|\-shallow)$" "$@"; then
 		extra_init_args+=" --depth 1"
 	fi
-	sfb_chroot habuild "repo init -u $REPO_INIT_URL -b $branch --platform=linux$extra_init_args" || return 1
-	if [ ! -d "$ANDROID_ROOT/.repo" ]; then
+	if [ ! -d "$ANDROID_ROOT/.repo/manifests" ]; then
 		#sfb_hook_exec pre-repo-init
 		sfb_log "Initializing new $branch source tree..."
 		sfb_chroot habuild "repo init -u $REPO_INIT_URL -b $branch --platform=linux$extra_init_args" || return 1
@@ -139,19 +138,23 @@ sfb_sync_hybris_repos() {
 		sfb_chroot habuild "repo sync -l" || return 1
 	fi
 	
-	sfb_log "Cloning Libhybris into external"
-	sfb_git_clone_or_pull -b "android11" -u "git@github.com:mer-hybris/libhybris.git" -d "$ANDROID_ROOT/external/libhybris"
-
+	local fs_succes=""
 	sfb_log "Syncing $branch source tree with $SFB_JOBS jobs..."
 	if [ $(echo $ANDROID_ROOT/*/ | wc -w) -le $(echo $ANDROID_ROOT/.repo/projects/*/ | wc -w) ]; then
 		if [ ! -f "$ANDROID_ROOT/.repo/project.list" ]; then
-			sfb_log "Building with --fetch-submodules"
-			sfb_chroot habuild "repo sync -c -j$SFB_JOBS --fail-fast --fetch-submodules --no-clone-bundle --no-tags"
+			sfb_log "Syncing $branch source tree with --fetch-submodules"
+			sfb_chroot habuild "repo sync -c -j$SFB_JOBS --fail-fast --fetch-submodules --no-clone-bundle --no-tags"; fs_succes="$?"
 		fi
+	fi	
+	if [[ "$fs_succes" -eq 0 ]]; then
+		sfb_log "Syncing $branch source tree with --force-sync"
+		sfb_chroot habuild "repo sync -j$SFB_JOBS --force-sync" || return 1
 	fi
-	sfb_chroot habuild "repo sync -j$SFB_JOBS --force-sync" || return 1
-
+	
+	sfb_log "Cloning Libhybris into external"
+	sfb_git_clone_or_pull -b "android11" -u "git@github.com:mer-hybris/libhybris.git" -d "$ANDROID_ROOT/external/libhybris"
 }
+
 sfb_sync_extra_repos() {
 	local clone_only=0 i dir_local url dir branch is_shallow extra_args progress
 	if [ ${#REPOS[@]} -eq 0 ]; then
