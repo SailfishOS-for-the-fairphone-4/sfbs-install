@@ -91,7 +91,7 @@ sfb_setup_rpm_build_packages(){
 	sfb_chroot sfossdk sh -c "echo y | $(echo "$SFB_BP" | sed "s/build_packages/add_new_device/")" || return
 	
 	sfb_chroot sfossdk sh -c "yes | sudo zypper install ccache "|| return
-	cp chroot/sdks/sfossdk/usr/bin/ccache chroot/targets/*/usr/bin/ccache
+	cp sfbootstrap/chroot/sdks/sfossdk/usr/bin/ccache sfbootstrap/chroot/targets/*/usr/bin/
 }
 
 sfb_build_packages() {
