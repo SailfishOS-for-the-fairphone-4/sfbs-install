@@ -1,5 +1,7 @@
 #!/bin/sh
 
+
+
 usage() {
 cat << EOF
 Usage: $0 [OPTION] ..."
@@ -11,17 +13,14 @@ EOF
 }
 
 OPTIONS=$(getopt -o hpiv -l help,install-all-packages,do-not-install,version,install -- "$@")
-
-if [ $? -ne 0 ]; then
-    echo "getopt error"
-fi
+CMDS=("init" "chroot setup" "sync" "build hal" "build packages")
 
 unset INSTALL_PACKAGES FULL_INSTALL GET_VERSION INSTALL TARGET
 
+# If there are no cmd args; get packages and fullbuild
 if [[ $# -eq 0 && -z "$1" ]]; then
     INSTALL_PACKAGES=1
-    FULL_INSTALL=1 
-    TARGET="fullbuild"
+    INSTALL=1 
 fi
 
 eval set -- $OPTIONS
@@ -29,10 +28,7 @@ while true; do
     case "$1" in
       -h|--help) usage ;;
       -p|--install-all-packages) INSTALL_PACKAGES=1;;
-      -i|--install) case "${@: -1}" in
-      			"fullbuild")  FULL_INSTALL=1 TARGET="fullbuild";;
-		      	*) INSTALL=1 ;;
-		    esac ;;
+      -i|--install)  INSTALL=1 ;;
       -v|--version) GET_VERSION=1 ;;
       --) shift ; break ;;
       *)         echo "Unknown option: $1" ; usage ;;
@@ -40,114 +36,87 @@ while true; do
     shift
 done
 
-#!/bin/sh
+# Envoke Sudo lmao
+sudo echo
+[ $? -eq 1 ] && return
 
-# TO-DO SFBOOTSTRAP!
-# Extra prompts for debugging
-# Add docker support
-# DEPRECATED
-# no provider fo droid-configs
-# no force if succes fetch
+. sfb_io.sh
+sfb_log "Starting the sfbootstrap-script..."
 
-# DONE
-# Check Git-SSH
-# remove second Git requireMENT?
-# check for requirements?
-# remove I/O-prints
-# auto color.ui
-# rework setup.sh and utils.sh
-# hybris AFTER repo sync. So the 
 
-# pybind remove
-# check for || return 
-# automated Echo's for auto color?
-
+alias rc=return_control
 INPUTPKGS="pkgs.rq"
+SFB_ROOT_SH=sfbootstrap/sfbootstrap.sh
 
-# Console/CLI color I/O
-merror() { >&2 echo -e "\e[01;31m!! $* \e[00m" 
-}
-mgood() { echo -e "\e[01;32m* $* \e[00m" 
-}
-minstall() { echo -e "\e[01;33m* $* \e[00m" 
-}
-minfo() { echo -e "\e[01;34m* $* \e[00m" 
-}
-
-silent(){
-	"$@"&>/dev/null
-}
 
 install_packages() {
-	minstall "Updating/Upgrading package Manager..."
-	silent sudo apt-get update || return
-	echo y | silent sudo apt-get upgrade || return
-	pkgs=""
+	local NOFAIL ans=""
+	
+	sfb_log "Installing required packages..."
 	while IFS= read -r pkg
 	do
-		pkgs+="$pkg "
+		sfb_install "$pkg"
+		silent sudo apt-get install $pkg;
+		[ $? != 0 ] && NOFAIL=0;
 	done < "$INPUTPKGS"
 	
-	minstall "Installing: $pkgs"
-	echo y | sudo apt-get install $pkgs || return
+	if [ ! -z "$NOFAIL" ]; then
+		sfb_prompt "Some packages failed to install! upgrade apt and try again (Y/n)?" ans "$SFB_YESNO_REGEX"
+		[[ "${ans^^}" != "Y"* ]] && return
+		sfb_log "Upgrading apt. \n\t Please Wait..."
+		rc silent sudo apt update && echo y | rc silent sudo apt upgrade
+		install_packages
+	else
+		sfb_succes "All packages are succesfully installed!"	
+	fi
 }
 
 
-git_check_ssh_auth(){
-	minstall "Checking GitHub-ssh-connection..."
-	ssh -T git@github.com &>/dev/null; [ $? -eq 1 ] || return 0
-	mgood "Git-ssh is successfully configured!"
+start_installing(){
+	[ -z "$1" ] && return
+
+	for n in $(seq 0 $1); do
+		sfb_log "Starting: ${CMDS[n]}!"
+		rc $SFB_ROOT_SH ${CMDS[n]}
+		sfb_log "Done executing ${CMDS[n]}"
+	done
+}
+
+# README config and SSH.
+git_check_ssh(){
+	sfb_log "Checking GitHub-ssh-connection..."
+	silent ssh -T git@github.com; [ $? -eq 1 ] || return 0
+	sfb_succes "Git-ssh is successfully configured!"
 	return 1
 }
 
-git_check_setup_config(){
-	if [ ! -f "$HOME/.gitconfig" ]; then
-		merror "No Git-Configuration found!"
-		minfo "Run: \n\tgit config --global user.name \"yourname\" \
-			   \n\tgit config --global user.email \"your@email.com\"\
-			   \n\tgit config --global color.ui \"auto\""
-	   	return 0
-	fi
-	if [ ! -f "$HOME/.ssh/id_rsa.pub" ]; then
-		merror "GitHub-ssh is not setup yet!"
-		minfo "Run:\n\tssh-keygen"
-		minfo "Make sure you add the .ssh/id_rsa.pub to your GitHub-account!";
-		return 0
-	fi 
+setup_installer(){
+	local ans iType
 	
-	git_check_ssh_auth; [ $? -eq 1 ] && return 1
-	merror "The config_setup did not succeed..."
-	minfo "Make sure you add the .ssh/id_rsa.pub to your GitHub-account!";
-	return 0
-}
-
-start_installer(){
-	git_check_setup_config; [ $? -eq 1 ] || return
+	git_check_ssh; [ $? -eq 1 ] || return
 	
-	if [ "$1" == "fullbuild" ]; then
-		./sfbootstrap/sfbootstrap.sh init || return
-		./sfbootstrap/sfbootstrap.sh chroot setup || return
-		./sfbootstrap/sfbootstrap.sh sync || return
-		./sfbootstrap/sfbootstrap.sh build hal || return
-		./sfbootstrap/sfbootstrap.sh build packages || return
-	# else
-		#TO DO
-		# check (w prompt?) which steps we want to do?
+	sfb_log "The next commands need te be run to complete the whole setup: "
+	for i in "${!CMDS[@]}"; do
+		echo -e "${GREEN}\t$i: ${CMDS[i]}${RESET}" 
+	done
+	
+	sfb_prompt "Until Nth command do you want to run (all/(0-4))?" ans "[a-zA-Z0-4]"
+	answer="${ans^^}"
+	arr_size="${#CMDS[@]}"
+	if [[ $answer -eq $((arr_size=arr_size-1)) || "${ans^^}" == "A"* ]]; then
+		iType="$arr_size"
+	elif (( $answer >= 0 && $answer <= 4 )); then
+		iType="$answer" 
+	else
+		echo "undefined!" && return 
 	fi
-}
-
-get_version(){
-	mgood "Version: Beta"
+	start_installing "$iType"
 }
 
 main(){
-	if [ "$GET_VERSION" ]; then
-		get_version || return
-	fi
-	if [ "$INSTALL_PACKAGES" ]; then
-		install_packages || return
-	fi
-	[[ "$INSTALL"  || "$FULL_INSTALL" ]] && start_installer $1;
+	[  "$GET_VERSION" ] && rc get_version
+	[  "$INSTALL_PACKAGES" ] && rc install_packages
+	[  "$INSTALL" ] && setup_installer;
 }
 
-main $TARGET
+main
