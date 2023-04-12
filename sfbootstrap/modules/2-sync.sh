@@ -126,11 +126,13 @@ sfb_sync_hybris_repos() {
 		xml+="</manifest>"
 		sfb_write_if_different "$xml" "$SFB_OVERRIDES_XML"
 	fi
-
-	if [ ! -d "$SFB_LOCAL_MANIFESTS" ]; then
-		sfb_log "Initializing $SFB_LOCAL_MANIFESTS..."
-		mkdir -p $SFB_LOCAL_MANIFESTS && cp $ANDROID_ROOT/.repo/manifests/FP4.xml $SFB_LOCAL_MANIFESTS/FP4.xml || return
-	fi	
+	
+	if [[  -f $ANDROID_ROOT/.repo/manifests/FP4.xml ]]; then
+		if [ ! -d "$SFB_LOCAL_MANIFESTS" ]; then
+			sfb_log "Initializing $SFB_LOCAL_MANIFESTS..."
+			mkdir -p $SFB_LOCAL_MANIFESTS && cp $ANDROID_ROOT/.repo/manifests/FP4.xml $SFB_LOCAL_MANIFESTS/FP4.xml || return
+		fi	
+	fi
 			
 	if sfb_manual_hybris_patches_applied; then
 		sfb_prompt "Applied hybris patches detected; run 'repo sync -l' & discard ALL local changes (y/N)?" ans "$SFB_YESNO_REGEX" "$ans"
@@ -138,14 +140,14 @@ sfb_sync_hybris_repos() {
 		sfb_chroot habuild "repo sync -l" || return 1
 	fi
 	
-	fs_succes=""
+
 	sfb_log "Syncing $branch source tree with $SFB_JOBS jobs..."
-	if [ $(echo $ANDROID_ROOT/*/ | wc -w) -le $(echo $ANDROID_ROOT/.repo/projects/*/ | wc -w) ]; then
+	if [ $(echo $ANDROID_ROOT/*/ | wc -w) -lt $(echo $ANDROID_ROOT/.repo/projects/*/ | wc -w) ]; then
 		if [ ! -f "$ANDROID_ROOT/.repo/project.list" ]; then
 			sfb_log "Syncing $branch source tree with --fetch-submodules"
-			sfb_chroot habuild "repo sync -c -j$SFB_JOBS --fail-fast --fetch-submodules --no-clone-bundle --no-tags"; fs_succes="$?"
+			sfb_chroot habuild "repo sync -c -j$SFB_JOBS --fail-fast --fetch-submodules --no-clone-bundle --no-tags"
 		fi	
-	elif [[ -d "$ANDROID_ROOT/.repo/manifests" || "$fs_succes" -eq 0 ]]; then
+	elif [ -d "$ANDROID_ROOT/.repo/manifests" ]; then
 		sfb_log "Syncing $branch source tree with --force-sync"
 		sfb_chroot habuild "repo sync -j$SFB_JOBS --force-sync" || return 1
 	fi

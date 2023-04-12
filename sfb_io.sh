@@ -15,9 +15,13 @@ sfb_install()	{ echo -e "${ORANGE}INSTALL: $*${RESET}"; }
 sfb_succes()	{ echo -e "${GREEN}SUCCES: $*${RESET}"; }
 sfb_warn() 	{ echo -e "${YELLOW}WARN: $*${RESET}" 1>&2; }
 sfb_error() 	{ echo -e "${RED}ERROR: $*${RESET}" 1>&2; exit ${2:-1}; }
-
 return_control(){ "$@" || return ; }
 silent()	{ return_control "$@"&>/dev/null; }
+sfb_dbg() { [[ $SFB_DEBUG -eq 1 ]] && echo -e "${DIM}[DEBUG] $(caller 0 | awk '{printf "%s:%d",$2,$1}'): $1${RESET}" 1>&2; }
+sfb_exit() {
+	[ "$1" ] && echo -e "$1" 1>&2
+	exit ${2:-1}
+}
 
 sfb_prompt() {
 	local msg="$1" var="$2" match_regex="$3" prefill_ans="$4" loop=true
