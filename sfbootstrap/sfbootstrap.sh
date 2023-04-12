@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # sfbootstrap - The all-in-one Sailfish OS local development bootstrapping script
 
+
 # Config
 #########
 : ${SUDO:=sudo}          # sudo program, unset if running as root
@@ -41,43 +42,7 @@ ANDROID_PRODUCT_OUT="" # e.g. "$ANDROID_ROOT/out/target/product/$HABUILD_DEVICE"
 ############
 
 # I/O
-sfb_printf() { printf "${SFB_C_LBLUE}>>${SFB_C_RESET} $1"; }
-sfb_log() { sfb_printf "$1\n"; }
-sfb_exit() {
-	[ "$1" ] && echo -e "$1" 1>&2
-	exit ${2:-1}
-}
-sfb_error() { sfb_exit "${SFB_C_LRED}ERROR: $*${SFB_C_RESET}"; }
-sfb_warn() { echo -e "${SFB_C_YELLOW}WARN: $*${SFB_C_RESET}" 1>&2; }
-sfb_dbg() {
-	if [ $SFB_DEBUG -eq 1 ]; then
-		echo -e "${SFB_C_DIM}[DEBUG] $(caller 0 | awk '{printf "%s:%d",$2,$1}'): $1${SFB_C_RESET}" 1>&2
-	fi
-}
-sfb_prompt() {
-	local msg="$1" var="$2" match_regex="$3" prefill_ans="$4" loop=true
-	while $loop; do
-		if [ "$prefill_ans" ]; then
-			sfb_log "$1 $prefill_ans ${SFB_C_DIM}(prefilled answer)${SFB_C_RESET}"
-			eval "$var=$prefill_ans"
-		else
-			read -erp "$(printf "${SFB_C_LBLUE}>>${SFB_C_RESET}") $1 " $var
-		fi
-		if [ "$match_regex" ]; then
-			if [[ "${!var}" =~ $match_regex ]]; then
-				loop=false
-			else
-				echo -e "${SFB_C_LRED}Invalid input, didn't match expected regex '$match_regex'!${SFB_C_RESET}"
-				if [ "$prefill_ans" ]; then
-					sfb_exit
-				fi
-			fi
-		else
-			loop=false
-		fi
-	done
-	sfb_dbg "$var='${!var}'"
-}
+source sfb_io.sh
 
 # Device
 sfb_get_droid_major_ver() {

@@ -89,9 +89,7 @@ sfb_setup_rpm_build_packages(){
 	done
 	
 	sfb_chroot sfossdk sh -c "echo y | $(echo "$SFB_BP" | sed "s/build_packages/add_new_device/")" || return
-	
-	sfb_chroot sfossdk sh -c "yes | sudo zypper install ccache "|| return
-	cp sfbootstrap/chroot/sdks/sfossdk/usr/bin/ccache sfbootstrap/chroot/targets/*/usr/bin/
+	sfb_chroot sfossdk sh -c "yes | sb2 -t $VENDOR-$DEVICE-$PORT_ARCH -R -msdk-install zypper install ccache" || return
 }
 
 sfb_build_packages() {

@@ -12,7 +12,7 @@ Usage: $0 [OPTION] ..."
 EOF
 }
 
-OPTIONS=$(getopt -o hpiv -l help,install-all-packages,do-not-install,version,install -- "$@")
+OPTIONS=$(getopt -o hpiv -l help,install-all-packages,version,install -- "$@")
 CMDS=("init" "chroot setup" "sync" "build hal" "build packages")
 
 unset INSTALL_PACKAGES FULL_INSTALL GET_VERSION INSTALL TARGET
@@ -26,7 +26,7 @@ fi
 eval set -- $OPTIONS
 while true; do
     case "$1" in
-      -h|--help) usage ;;
+      -h|--help) usage; return;;
       -p|--install-all-packages) INSTALL_PACKAGES=1;;
       -i|--install)  INSTALL=1 ;;
       -v|--version) GET_VERSION=1 ;;
@@ -36,18 +36,22 @@ while true; do
     shift
 done
 
-# Envoke Sudo lmao
-sudo echo
+# Envoke Sudo password lmao
+sudo echo "Sudo envoke succesfull!"
 [ $? -eq 1 ] && return
 
 . sfb_io.sh
-sfb_log "Starting the sfbootstrap-script..."
-
 
 alias rc=return_control
 INPUTPKGS="pkgs.rq"
 SFB_ROOT_SH=sfbootstrap/sfbootstrap.sh
 
+git_check_ssh(){
+	sfb_log "Checking GitHub-ssh-connection..."
+	silent ssh -T git@github.com; [ $? -eq 1 ] || return 0
+	sfb_succes "Git-ssh is successfully configured!"
+	return 1
+}
 
 install_packages() {
 	local NOFAIL ans=""
@@ -73,25 +77,27 @@ install_packages() {
 
 
 start_installing(){
+	local ans="" start=0 end=$1
+	
 	[ -z "$1" ] && return
+	
+	if [[ "$1" == "Full" ]]; then
+		end=$((${#CMDS[@]}-1))
+	else
+		sfb_prompt "Do you want to run this ($1: ${CMDS[$1]}) single command (Y/n)?" ans "[a-zA-Z]"
+		[[ "${ans^^}" == "Y"* ]] && start=$1
+	fi
 
-	for n in $(seq 0 $1); do
-		sfb_log "Starting: ${CMDS[n]}!"
-		rc $SFB_ROOT_SH ${CMDS[n]}
-		sfb_log "Done executing ${CMDS[n]}"
+	for i in $(seq $start $end); do
+		sfb_log "Starting: ${CMDS[i]}!"
+		rc $SFB_ROOT_SH ${CMDS[i]}
+		sfb_log "Done executing ${CMDS[i]}"
 	done
 }
 
-# README config and SSH.
-git_check_ssh(){
-	sfb_log "Checking GitHub-ssh-connection..."
-	silent ssh -T git@github.com; [ $? -eq 1 ] || return 0
-	sfb_succes "Git-ssh is successfully configured!"
-	return 1
-}
 
 setup_installer(){
-	local ans iType
+	local ans="" iType
 	
 	git_check_ssh; [ $? -eq 1 ] || return
 	
@@ -102,10 +108,10 @@ setup_installer(){
 	
 	sfb_prompt "Until Nth command do you want to run (all/(0-4))?" ans "[a-zA-Z0-4]"
 	answer="${ans^^}"
-	arr_size="${#CMDS[@]}"
-	if [[ $answer -eq $((arr_size=arr_size-1)) || "${ans^^}" == "A"* ]]; then
-		iType="$arr_size"
-	elif (( $answer >= 0 && $answer <= 4 )); then
+	arr_size=$((${#CMDS[@]}-1))
+	if [[ "${ans^^}" == "A"* ]]; then
+		iType="Full"
+	elif (( $answer >= 0 && $answer <= $arr_size )); then
 		iType="$answer" 
 	else
 		echo "undefined!" && return 
@@ -113,10 +119,12 @@ setup_installer(){
 	start_installing "$iType"
 }
 
+
 main(){
+	sfb_log "Starting the sfbootstrap-script..."
+
 	[  "$GET_VERSION" ] && rc get_version
 	[  "$INSTALL_PACKAGES" ] && rc install_packages
 	[  "$INSTALL" ] && setup_installer;
 }
-
 main
