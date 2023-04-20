@@ -43,8 +43,8 @@ sudo echo "Sudo envoke succesfull!"
 . sfb_io.sh
 
 alias rc=return_control
-INPUTPKGS="pkgs.rq"
 SFB_ROOT_SH=sfbootstrap/sfbootstrap.sh
+DEPS=("git" "curl")
 
 git_check_ssh(){
 	sfb_log "Checking GitHub-ssh-connection..."
@@ -57,18 +57,17 @@ install_packages() {
 	local NOFAIL ans=""
 	
 	sfb_log "Installing required packages..."
-	while IFS= read -r pkg
-	do
+	for pkg in ${DEPS[@]}; do
 		sfb_install "$pkg"
 		silent sudo apt-get install $pkg;
 		[ $? != 0 ] && NOFAIL=0;
-	done < "$INPUTPKGS"
+	done
 	
 	if [ ! -z "$NOFAIL" ]; then
 		sfb_prompt "Some packages failed to install! upgrade apt and try again (Y/n)?" ans "$SFB_YESNO_REGEX"
 		[[ "${ans^^}" != "Y"* ]] && return
 		sfb_log "Upgrading apt. \n\t Please Wait..."
-		rc silent sudo apt update && echo y | rc silent sudo apt upgrade
+		silent sudo apt update && silent sudo apt -y upgrade
 		install_packages
 	else
 		sfb_succes "All packages are succesfully installed!"	
@@ -84,7 +83,7 @@ start_installing(){
 	if [[ "$1" == "Full" ]]; then
 		end=$((${#CMDS[@]}-1))
 	else
-		sfb_prompt "Do you want to run this ($1: ${CMDS[$1]}) single command (Y/n)?" ans "[a-zA-Z]"
+		sfb_prompt "Do you want to run this ($1: ${CMDS[$1]}) single command (or the sequence until $1) (Y/n)?" ans "[a-zA-Z]"
 		[[ "${ans^^}" == "Y"* ]] && start=$1
 	fi
 
