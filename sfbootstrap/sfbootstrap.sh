@@ -142,6 +142,7 @@ sfb_device_env() {
 	SB2_TARGET_ROOT="$PLATFORM_SDK_ROOT/targets/$VENDOR-$DEVICE-$PORT_ARCH"
 	SFB_IMAGES="$SFB_ROOT/images/$VENDOR-$DEVICE-$PORT_ARCH"
 	[ -d "$ANDROID_ROOT" ] || mkdir -p "$ANDROID_ROOT"
+	ln -s $ANDROID_ROOT ~/hadk
 	if [ "$SFB_DEVICE" != "$SFB_LASTDEVICE" ]; then
 		# we don't want to save the device yet in case one of these fails, yet
 		# sfb_chroot_sb2_setup() requires lastdevice to be saved for the

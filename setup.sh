@@ -1,21 +1,19 @@
 #!/bin/sh
 
-
-
 usage() {
 cat << EOF
 Usage: $0 [OPTION] ..."
 	-h, --help			You're reading it
 	-p, --install-all-packages	Install all the needed packages
 	-i, --install			Start the main build process
+	-m, --enable-manual-setup	Enable to continue setting up manually at any point by running sfossdk in the $HOME directory
       	-v, --version			Get the current sfbs-install version
 EOF
 }
 
-OPTIONS=$(getopt -o hpiv -l help,install-all-packages,version,install -- "$@")
-CMDS=("init" "chroot setup" "sync" "build hal" "build packages")
+OPTIONS=$(getopt -o hpmiv -l help,install-all-packages,version,install,enable-manual-setup -- "$@")
 
-unset INSTALL_PACKAGES FULL_INSTALL GET_VERSION INSTALL TARGET
+unset INSTALL_PACKAGES FULL_INSTALL GET_VERSION INSTALL TARGET ENABLE_MANUAL_SETUP
 
 # If there are no cmd args; get packages and fullbuild
 if [[ $# -eq 0 && -z "$1" ]]; then
@@ -29,6 +27,7 @@ while true; do
       -h|--help) usage; return;;
       -p|--install-all-packages) INSTALL_PACKAGES=1;;
       -i|--install)  INSTALL=1 ;;
+      -m|--enable-manual-setup) ENABLE_MANUAL_SETUP=1;; 
       -v|--version) GET_VERSION=1 ;;
       --) shift ; break ;;
       *)         echo "Unknown option: $1" ; usage ;;
@@ -45,6 +44,7 @@ sudo echo "Sudo envoke succesfull!"
 alias rc=return_control
 SFB_ROOT_SH=sfbootstrap/sfbootstrap.sh
 DEPS=("git" "curl")
+CMDS=("init" "chroot setup" "sync" "build hal" "build packages")
 
 git_check_ssh(){
 	sfb_log "Checking GitHub-ssh-connection..."
@@ -59,7 +59,7 @@ install_packages() {
 	sfb_log "Installing required packages..."
 	for pkg in ${DEPS[@]}; do
 		sfb_install "$pkg"
-		silent sudo apt-get install $pkg;
+		silent sudo apt-get -y install $pkg;
 		[ $? != 0 ] && NOFAIL=0;
 	done
 	
@@ -118,12 +118,49 @@ setup_installer(){
 	start_installing "$iType"
 }
 
+get_version() { echo "sfbs-install 1.0"; }
+
+manual_sfossdk_setup(){
+	#TODO need cleaning, goes into effect AFTER chroot setup has been run... should fix that... Also, FP4 is nog showing when in HABUILD for some reason?
+	
+	sfb_log "Setting up the manual setup scripts"
+	echo "export ANDROID_ROOT=\"\$HOME/hadk\"
+export VENDOR=\"fairphone\"
+export DEVICE=\"FP4\"
+export PORT_ARCH=\"aarch64\"" > $HOME/.hadk.env
+	
+	echo "function hadk() { source \$HOME/.hadk.env; echo \"Env setup for \$DEVICE\"; }
+export PS1=\"HABUILD_SDK [\${DEVICE}] \$PS1\"
+hadk" > $HOME/.mersdkubu.profile
+	
+	
+	if ! grep -Fxq "#__sfossdk" ~/.bashrc; then
+	echo "#__sfossdk
+export PLATFORM_SDK_ROOT=/srv/sailfishos
+alias sfossdk=\$PLATFORM_SDK_ROOT/sdks/sfossdk/sdk-chroot
+ln -s /parentroot\$PLATFORM_SDK_ROOT/sdks/sfossdk/home/sfos/.scratchbox2 /home/sfos/.scratchbox2 &>/dev/null
+alias enter_habuild=\"ubu-chroot -r /parentroot/srv/sailfishos/sdks/ubuntu\"
+if [[ \$SAILFISH_SDK ]]; then
+  PS1=\"PlatformSDK \$PS1\"
+  [ -d /etc/bash_completion.d ] && for i in /etc/bash_completion.d/*;do . \$i;done
+  
+  function hadk() { source \$HOME/.hadk.env;
+  echo \"Env setup for \$DEVICE\"; }
+  hadk
+fi" >> ~/.bashrc
+	
+	fi
+	sfb_log " sourcing ~/.bashrc...
+	You can now setup the project manually after running sfossdk in the \$HOME directory."
+	. ~/.bashrc
+}
 
 main(){
 	sfb_log "Starting the sfbootstrap-script..."
-
+	
 	[  "$GET_VERSION" ] && rc get_version
 	[  "$INSTALL_PACKAGES" ] && rc install_packages
+	[  "$ENABLE_MANUAL_SETUP" ] && rc manual_sfossdk_setup
 	[  "$INSTALL" ] && setup_installer;
 }
 main
