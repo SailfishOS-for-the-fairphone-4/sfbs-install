@@ -120,8 +120,38 @@ setup_installer(){
 
 
 main(){
-	sfb_log "Starting the sfbootstrap-script..."
 
+	sfb_log "Starting the sfbootstrap-script..."
+	
+	## TODO: ADD CLAUSES
+	silent ln -s sfbs-install/sfbootstrap/src/hybris-18.1 ~/hadk
+	
+	echo "export ANDROID_ROOT=\"\$HOME/hadk\"
+export VENDOR=\"fairphone\"
+export DEVICE=\"FP4\"
+export PORT_ARCH=\"aarch64\"" > $HOME/.hadk.env
+	
+	echo "function hadk() { source \$HOME/.hadk.env; echo \"Env setup for \$DEVICE\"; }
+export PS1=\"HABUILD_SDK [\${DEVICE}] \$PS1\"
+hadk" > $HOME/.mersdkubu.profile
+	
+	
+	if ! grep -Fxq "#__sfossdk" ~/.bashrc; then
+	echo "#__sfossdk
+export PLATFORM_SDK_ROOT=/srv/sailfishos
+alias sfossdk=\$PLATFORM_SDK_ROOT/sdks/sfossdk/sdk-chroot
+if [[ \$SAILFISH_SDK ]]; then
+  PS1=\"PlatformSDK \$PS1\"
+  [ -d /etc/bash_completion.d ] && for i in /etc/bash_completion.d/*;do . \$i;done
+  
+  function hadk() { source \$HOME/.hadk.env;
+  echo \"Env setup for \$DEVICE\"; }
+  hadk
+fi" >> ~/.bashrc
+	
+	fi
+	. ~/.bashrc
+	
 	[  "$GET_VERSION" ] && rc get_version
 	[  "$INSTALL_PACKAGES" ] && rc install_packages
 	[  "$INSTALL" ] && setup_installer;

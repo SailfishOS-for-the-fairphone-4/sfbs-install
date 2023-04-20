@@ -93,8 +93,8 @@ sfb_chroot_sb2_setup() {
 	if ! sfb_chroot_exists_sb2_tooling; then
 		sfb_chroot sfossdk sh -c "sdk-assistant tooling create SailfishOS-$TOOLING_RELEASE /parentroot$SFB_ARC/$tooling --no-snapshot -y" || return 1
 	fi
-	sfb_chroot sfossdk sh -c "sdk-assistant target create $VENDOR-$DEVICE-$PORT_ARCH /parentroot$SFB_ARC/$target --tooling SailfishOS-$TOOLING_RELEASE --no-snapshot -y && sdk-assistant list" || return 1
 
+	sfb_chroot sfossdk sh -c "sdk-assistant target create $VENDOR-$DEVICE-$PORT_ARCH /parentroot$SFB_ARC/$target --tooling SailfishOS-$TOOLING_RELEASE --no-snapshot -y && sdk-assistant list" || return 1
 	sfb_log "Running Scratchbox2 self-test for $VENDOR-$DEVICE-$PORT_ARCH..."
 	sfb_chroot sfossdk sh -c 'cd;
 cat > test.c <<EOF
