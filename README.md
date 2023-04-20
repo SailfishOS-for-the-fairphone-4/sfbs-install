@@ -36,6 +36,7 @@ Here are some commandline-arguments you could use:
 | -h, --help            | How to use the script?       |
 | -p, --install-all-packages           | Install all needed packages (only for apt)        |
 | -i, --install         | Start the main build process      |
+| -m, --enable-manual-setup |	Enable to continue setting up manually at any point by running sfossdk in the $HOME directory
 | -v, --version         | Get the current sfbs-install version      |
 
 
