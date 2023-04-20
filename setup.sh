@@ -1,7 +1,5 @@
 #!/bin/sh
 
-
-
 usage() {
 cat << EOF
 Usage: $0 [OPTION] ..."
@@ -59,7 +57,7 @@ install_packages() {
 	sfb_log "Installing required packages..."
 	for pkg in ${DEPS[@]}; do
 		sfb_install "$pkg"
-		silent sudo apt-get install $pkg;
+		silent sudo apt-get -y install $pkg;
 		[ $? != 0 ] && NOFAIL=0;
 	done
 	
@@ -124,8 +122,10 @@ main(){
 	sfb_log "Starting the sfbootstrap-script..."
 	
 	## TODO: ADD CLAUSES
-	silent ln -s sfbs-install/sfbootstrap/src/hybris-18.1 ~/hadk
+	## fix problem, where sfossdk doesnt regocnise the targets...
+	# could manually sdk-assisten create etc.
 	
+
 	echo "export ANDROID_ROOT=\"\$HOME/hadk\"
 export VENDOR=\"fairphone\"
 export DEVICE=\"FP4\"
@@ -140,6 +140,7 @@ hadk" > $HOME/.mersdkubu.profile
 	echo "#__sfossdk
 export PLATFORM_SDK_ROOT=/srv/sailfishos
 alias sfossdk=\$PLATFORM_SDK_ROOT/sdks/sfossdk/sdk-chroot
+ln -s /parentroot\$PLATFORM_SDK_ROOT/sdks/sfossdk/home/sfos/.scratchbox2 /home/sfos/.scratchbox2 &>/dev/null
 if [[ \$SAILFISH_SDK ]]; then
   PS1=\"PlatformSDK \$PS1\"
   [ -d /etc/bash_completion.d ] && for i in /etc/bash_completion.d/*;do . \$i;done
