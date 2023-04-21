@@ -89,7 +89,8 @@ start_installing(){
 
 	for i in $(seq $start $end); do
 		sfb_log "Starting: ${CMDS[i]}!"
-		rc $SFB_ROOT_SH ${CMDS[i]}
+		$SFB_ROOT_SH ${CMDS[i]}
+		[ "$?" -ne "0" ] && return
 		sfb_log "Done executing ${CMDS[i]}"
 	done
 }
