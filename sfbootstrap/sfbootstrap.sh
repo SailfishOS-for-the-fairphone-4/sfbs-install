@@ -9,7 +9,8 @@
 : ${SFB_COLORS:=1}       # enable colorful output
 : ${SFB_JOBS:=$(nproc)}  # amounts of sync/builds jobs to use
 : ${SFB_ROOT:="$(readlink -f "$(dirname "$0")")"}
-: ${PLATFORM_SDK_ROOT:="$SFB_ROOT/chroot"}
+#: ${PLATFORM_SDK_ROOT:="$SFB_ROOT/chroot"}
+: ${PLATFORM_SDK_ROOT:="srv/sailfishos"}
 
 # Constants
 ############
