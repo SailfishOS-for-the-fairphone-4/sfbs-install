@@ -1,20 +1,5 @@
 #!/bin/sh
 
-
-#todo:
-# SETUP.SH
-# Add docker support? geen idee op dit moment wat hievoor nodig is?
-
-# MODULES:
-# sync.sh
-# look for unnecessary bugs/commands (thisis for the oneplus after all) 
-# Remove ccache command after it got added to the device_hal? - add ccahe to device-hal
-
-# build.sh
-# replace GIT_URL with REPO_INIT_URL in env.sh + sed? get rids of hardcoded paths
-# 
-
-
 usage() {
 cat << EOF
 Usage: $0 [OPTION] ..."

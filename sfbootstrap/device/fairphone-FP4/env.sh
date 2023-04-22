@@ -1,9 +1,9 @@
 # sfbootstrap env for fairphone-FP4
 
 VENDOR=fairphone
-VENDOR_PRETTY="f"
+VENDOR_PRETTY="Fairphone"
 DEVICE=FP4
-DEVICE_PRETTY="f"
+DEVICE_PRETTY="Fairphone 4"
 HABUILD_DEVICE=FP4
 HOOKS_DEVICE=fairphone-FP4
 PORT_ARCH=aarch64
