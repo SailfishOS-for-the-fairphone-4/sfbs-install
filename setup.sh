@@ -1,5 +1,20 @@
 #!/bin/sh
 
+
+#todo:
+# SETUP.SH
+# Add docker support? geen idee op dit moment wat hievoor nodig is?
+
+# MODULES:
+# sync.sh
+# look for unnecessary bugs/commands (thisis for the oneplus after all) 
+# Remove ccache command after it got added to the device_hal? - add ccahe to device-hal
+
+# build.sh
+# replace GIT_URL with REPO_INIT_URL in env.sh + sed? get rids of hardcoded paths
+# 
+
+
 usage() {
 cat << EOF
 Usage: $0 [OPTION] ..."
@@ -35,17 +50,16 @@ while true; do
     shift
 done
 
-# Envoke Sudo password lmao
-sudo echo "Sudo envoke succesfull!"
-[ $? -eq 1 ] && return
-
+# Source I/O
 . sfb_io.sh
 
+# Add possibility to return whenever...
 alias rc=return_control
-SFB_ROOT_SH=sfbootstrap/sfbootstrap.sh
 DEPS=("git" "curl")
 CMDS=("init" "chroot setup" "sync" "build hal" "build packages")
 
+
+# Check if an ssh-conenction with github could be established succesfully.
 git_check_ssh(){
 	sfb_log "Checking GitHub-ssh-connection..."
 	silent ssh -T git@github.com; [ $? -eq 1 ] || return 0
@@ -53,6 +67,7 @@ git_check_ssh(){
 	return 1
 }
 
+# Install all the "needed" packages in the DEPS array.
 install_packages() {
 	local NOFAIL ans=""
 	
@@ -60,13 +75,13 @@ install_packages() {
 	for pkg in ${DEPS[@]}; do
 		sfb_install "$pkg"
 		silent sudo apt-get -y install $pkg;
-		[ $? != 0 ] && NOFAIL=0;
+		[ $? -ne 0 ] && NOFAIL=0
 	done
 	
 	if [ ! -z "$NOFAIL" ]; then
 		sfb_prompt "Some packages failed to install! upgrade apt and try again (Y/n)?" ans "$SFB_YESNO_REGEX"
 		[[ "${ans^^}" != "Y"* ]] && return
-		sfb_log "Upgrading apt. \n\t Please Wait..."
+		sfb_log "Upgrading apt... \n\t Please Wait..."
 		silent sudo apt update && silent sudo apt -y upgrade
 		install_packages
 	else
@@ -76,88 +91,93 @@ install_packages() {
 
 
 start_installing(){
-	local ans="" start=0 end=$1
+	local ans="" start=1 end=$1
 	
+	# base case
 	[ -z "$1" ] && return
 	
-	if [[ "$1" == "Full" ]]; then
-		end=$((${#CMDS[@]}-1))
-	else
-		sfb_prompt "Do you want to run this ($1: ${CMDS[$1]}) single command (or the sequence until $1) (Y/n)?" ans "[a-zA-Z]"
-		[[ "${ans^^}" == "Y"* ]] && start=$1
-	fi
-
+	sfb_printf "\tA: {Single}: ${CMDS[$(($1-1))]}" ${GREEN}
+	sfb_printf "\tB: {Sequence}: ${CMDS[0]} -->  ${CMDS[$(($1-1))]}" ${GREEN} 
+	sfb_prompt "Do you want the run \"Single\"(A) or \"Sequence\"(B) (A/B)?" ans "[a-bA-B]" $2
+	[[ "${ans^^}" == "A"* ]] && start=$1
+	
 	for i in $(seq $start $end); do
-		sfb_log "Starting: ${CMDS[i]}!"
-		$SFB_ROOT_SH ${CMDS[i]}
-		[ "$?" -ne "0" ] && return
-		sfb_log "Done executing ${CMDS[i]}"
+		# index starts at 0, we need to decrement so the index matches with the chosen component
+		running_cmd=${CMDS[$((i-1))]}
+		
+		sfb_log "Starting: $running_cmd..."
+		sfbootstrap/sfbootstrap.sh $running_cmd
+		[ $? -ne 0 ] && return
+		sfb_log "Done executing $running_cmd!"
 	done
 }
 
 
 setup_installer(){
-	local ans="" iType
+	local ans="" cmd prefill_ans arr_size=${#CMDS[@]}
 	
 	git_check_ssh; [ $? -eq 1 ] || return
 	
 	sfb_log "The next commands need te be run to complete the whole setup: "
 	for i in "${!CMDS[@]}"; do
-		echo -e "${GREEN}\t$i: ${CMDS[i]}${RESET}" 
+		sfb_printf "\t$(($i+1)): {${CMDS[i]}}" ${GREEN}
 	done
-	
-	sfb_prompt "Until Nth command do you want to run (all/(0-4))?" ans "[a-zA-Z0-4]"
+
+	sfb_prompt "What command do you want to run (all/(1-$arr_size))?" ans "[a-z1-$arr_size]"
 	answer="${ans^^}"
-	arr_size=$((${#CMDS[@]}-1))
-	if [[ "${ans^^}" == "A"* ]]; then
-		iType="Full"
-	elif (( $answer >= 0 && $answer <= $arr_size )); then
-		iType="$answer" 
+	if [[ "$answer" == "A"* ]]; then
+		cmd="$arr_size"
+		# Prefill to do the full sequence if ans==A/a*
+		prefill_ans="B"
+	elif (( $answer > 0 && $answer <= $arr_size )); then
+		cmd="$answer" 
 	else
-		echo "undefined!" && return 
+		sfb_error "Undefined!" 
 	fi
-	start_installing "$iType"
+	
+	start_installing $cmd $prefill_ans 
 }
 
-get_version() { echo "sfbs-install 1.0"; }
+get_version() { echo "sfbs-install 2.0"; }
 
 manual_sfossdk_setup(){
-	#TODO need cleaning, goes into effect AFTER chroot setup has been run... should fix that... Also, FP4 is nog showing when in HABUILD for some reason?
-	
-	sfb_log "Setting up the manual setup scripts"
-	echo "export ANDROID_ROOT=\"\$HOME/hadk\"
-export VENDOR=\"fairphone\"
-export DEVICE=\"FP4\"
-export PORT_ARCH=\"aarch64\"" > $HOME/.hadk.env
-	
-	echo "function hadk() { source \$HOME/.hadk.env; echo \"Env setup for \$DEVICE\"; }
-export PS1=\"HABUILD_SDK [\${DEVICE}] \$PS1\"
-hadk" > $HOME/.mersdkubu.profile
-	
-	
-	if ! grep -Fxq "#__sfossdk" ~/.bashrc; then
-	echo "#__sfossdk
-export PLATFORM_SDK_ROOT=/srv/sailfishos
-alias sfossdk=\$PLATFORM_SDK_ROOT/sdks/sfossdk/sdk-chroot
-ln -s /parentroot\$PLATFORM_SDK_ROOT/sdks/sfossdk/home/sfos/.scratchbox2 /home/sfos/.scratchbox2 &>/dev/null
-alias enter_habuild=\"ubu-chroot -r /parentroot/srv/sailfishos/sdks/ubuntu\"
-if [[ \$SAILFISH_SDK ]]; then
-  PS1=\"PlatformSDK \$PS1\"
-  [ -d /etc/bash_completion.d ] && for i in /etc/bash_completion.d/*;do . \$i;done
-  
-  function hadk() { source \$HOME/.hadk.env;
-  echo \"Env setup for \$DEVICE\"; }
-  hadk
-fi" >> ~/.bashrc
-	
+	if [ ! -d $HOME/.hadk.env ]; then
+		echo "export ANDROID_ROOT=\"\$HOME/hadk\"
+			export VENDOR=\"fairphone\"
+			export DEVICE=\"FP4\"
+			export PORT_ARCH=\"aarch64\"" | tr -d '\t' > $HOME/.hadk.env 		
 	fi
-	sfb_log " sourcing ~/.bashrc...
-	You can now setup the project manually after running sfossdk in the \$HOME directory."
+	if [ ! -d $HOME/.mersdkubu.profile ]; then
+		echo "function hadk() { source \$HOME/.hadk.env; echo \"Env setup for \$DEVICE\"; }
+			hadk
+			export PS1=\"HABUILD_SDK [\${DEVICE}] \$PS1\"" | tr -d '\t' > $HOME/.mersdkubu.profile
+	fi
+	if ! grep -Fxq "#__sfossdk" ~/.bashrc; then
+		echo "#__sfossdk
+			export PLATFORM_SDK_ROOT=/srv/sailfishos
+			alias sfossdk=\$PLATFORM_SDK_ROOT/sdks/sfossdk/sdk-chroot
+			ln -s /parentroot\$PLATFORM_SDK_ROOT/sdks/sfossdk/home/sfos/.scratchbox2 /home/sfos/.scratchbox2 &>/dev/null
+			alias habuild=\"ubu-chroot -r /parentroot/srv/sailfishos/sdks/ubuntu\"
+			if [[ \$SAILFISH_SDK ]]; then
+				PS1=\"PlatformSDK \$PS1\"
+				[ -d /etc/bash_completion.d ] && for i in /etc/bash_completion.d/*;do  . \$i;done
+							
+				function hadk() { source \$HOME/.hadk.env;
+				echo \"Env setup for \$DEVICE\"; }
+				hadk
+			fi" | tr -d '\t' >> ~/.bashrc
+	fi
+	
+	sfb_log " sourcing ~/.bashrc...Run \"sfossdk\" to enter the manual environment."
 	. ~/.bashrc
 }
 
+
 main(){
-	sfb_log "Starting the sfbootstrap-script..."
+
+	# Envoke sudo password
+	sudo printf "${BLUE}>>${RESET} Starting the sfbootstrap-script...\n"
+	[ $? -ne 0 ] && return
 	
 	[  "$GET_VERSION" ] && rc get_version
 	[  "$INSTALL_PACKAGES" ] && rc install_packages

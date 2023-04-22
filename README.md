@@ -36,10 +36,22 @@ Here are some commandline-arguments you could use:
 | -h, --help            | How to use the script?       |
 | -p, --install-all-packages           | Install all needed packages (only for apt)        |
 | -i, --install         | Start the main build process      |
-| -m, --enable-manual-setup |	Enable to continue setting up manually at any point by running sfossdk in the $HOME directory
+| -m, --enable-manual-setup |	Enable to continue setting up manually|
 | -v, --version         | Get the current sfbs-install version      |
 
 
+## Setup the Project manually (after configuring the environment with the "-m"-flag):
+To enter sfossdk (switch_root), run: 
+```bash
+	sfossdk
+```
+
+To enter habuild (switch_root), run: 
+```bash
+	habuild
+```
+
+To enter habuild (switch_root), run "habuild" 
 
 ## Files read from host environment
 * `~/.gitconfig` (reused for `repo` in HA build chroot for automation etc.)

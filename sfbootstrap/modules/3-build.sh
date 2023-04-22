@@ -64,9 +64,8 @@ sfb_move_artifacts() {
 	[ -d "$SFB_IMAGES" ] || mkdir -p "$SFB_IMAGES"
 	for f in $(find "$ANDROID_ROOT/SailfishOS"* -type f -name '*.zip'); do
 		$SUDO chown $USER: "$f"*
-		$SUDO mv "$f"* "$SFB_IMAGES"
+		$SUDO cp "$f"* "$SFB_IMAGES"
 	done
-	sfb_log "Done!"
 }
 
 sfb_setup_rpm_build_packages(){

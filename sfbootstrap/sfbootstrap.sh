@@ -14,12 +14,12 @@
 
 # Constants
 ############
-SFB_LATEST_SFOS_RELEASE="4.3.0.12"
-SFB_SUPPORTED_HYBRIS_VERS="10.1 11.0 12.1 13.0 14.1 15.1 16.0 17.1 18.1"
+SFB_LATEST_SFOS_RELEASE="4.5.0.18"
+SFB_SUPPORTED_HYBRIS_VERS="18.1"
 SFB_KNOWN_CONFIG_VARS=(
 	ANDROID_MAJOR_VERSION DEVICE HABUILD_DEVICE HAL_MAKE_TARGETS HAL_ENV_EXTRA HYBRIS_VER PORT_ARCH PORT_TYPE
-	RELEASE REPOS REPO_INIT_URL SOC TOOLING_RELEASE SDK_RELEASE VENDOR REPO_LOCAL_MANIFESTS_URL VENDOR_PRETTY
-	DEVICE_PRETTY HOOKS_DEVICE LINKS REPO_OVERRIDES HYBRIS_PATCHER_SCRIPTS
+	RELEASE REPO_INIT_URL SOC TOOLING_RELEASE SDK_RELEASE VENDOR VENDOR_PRETTY
+	DEVICE_PRETTY HOOKS_DEVICE
 )
 SFB_YESNO_REGEX="^([yY].*|[nN].*|)$"
 SFB_PRETTYNAME_REGEX="^[a-zA-Z0-9\ \(\)+-]+$"
@@ -30,7 +30,6 @@ SFB_HOOKS=({pre,post}-{chroot-{setup,enter},build-{hal,packages,dhd,dcd,mw,gg,dh
 SFB_IMAGES="" # e.g. "$SFB_ROOT/images/$VENDOR-$DEVICE-$PORT_ARCH"
 SFB_LASTDEVICE=""
 SFB_LOCAL_MANIFESTS="" # e.g. "$ANDROID_ROOT/.repo/local_manifests"
-SFB_OVERRIDES_XML="" # e.g. "$SFB_LOCAL_MANIFESTS/sfbootstrap-overrides.xml"
 SFOSSDK_ROOT="$PLATFORM_SDK_ROOT/sdks/sfossdk"
 SFOSSDK_CHROOT="$SFOSSDK_ROOT/sdk-chroot"
 HABUILD_ROOT="$PLATFORM_SDK_ROOT/sdks/ubuntu"
@@ -60,44 +59,30 @@ sfb_device_new() {
 	[ -d "$device_dir" ] || mkdir -p "$device_dir"
 	{
 		echo "# sfbootstrap env for $SFB_DEVICE
-VENDOR=$VENDOR
-VENDOR_PRETTY=\"$VENDOR_PRETTY\"
-DEVICE=$DEVICE
-DEVICE_PRETTY=\"$DEVICE_PRETTY\"
-#HABUILD_DEVICE=\$DEVICE
-#HOOKS_DEVICE=\$SFB_DEVICE
-PORT_ARCH=$PORT_ARCH
-SOC=$SOC
-PORT_TYPE=$PORT_TYPE"
+		
+			VENDOR=$VENDOR
+			VENDOR_PRETTY=\"$VENDOR_PRETTY\"
+			DEVICE=$DEVICE
+			DEVICE_PRETTY=\"$DEVICE_PRETTY\"
+			HABUILD_DEVICE=$DEVICE
+			HOOKS_DEVICE=$SFB_DEVICE
+			PORT_ARCH=$PORT_ARCH
+			SOC=$SOC
+			PORT_TYPE=$PORT_TYPE" | tr -d '\t'
 		if [ "$PORT_TYPE" = "hybris" ]; then
 			echo "HYBRIS_VER=$HYBRIS_VER
-ANDROID_MAJOR_VERSION=$(sfb_get_droid_major_ver)
-REPO_INIT_URL=\"https://github.com/Sailfishos-for-the-fairphone-4/android.git\"
-#REPO_LOCAL_MANIFESTS_URL=\"\"
-#REPO_OVERRIDES=()
-#HYBRIS_PATCHER_SCRIPTS=()
-#HAL_MAKE_TARGETS=(hybris-hal droidmedia)
-#HAL_ENV_EXTRA=\"\""
+				ANDROID_MAJOR_VERSION=$(sfb_get_droid_major_ver)
+				REPO_INIT_URL=\"https://github.com/Sailfishos-for-the-fairphone-4/android.git\"
+				# HYBRIS_PATCHER_SCRIPTS=()
+				HAL_MAKE_TARGETS=hybris-hal droidmedia
+				HAL_ENV_EXTRA=\"\""  | tr -d '\t'
 		fi
 		echo "RELEASE=$RELEASE
-#TOOLING_RELEASE=\$RELEASE
-#SDK_RELEASE=latest"
-		if [ ${#REPOS[@]} -gt 0 ]; then
-			echo "REPOS=("
-			for i in $(seq 0 4 $((${#REPOS[@]}-1))); do
-				branch="${REPOS[$(($i+2))]}"
-				if [ "$PORT_TYPE" = "hybris" ]; then
-					branch="${branch//$HYBRIS_VER/\$HYBRIS_VER}"
-				fi
-				echo "    '${REPOS[$i]}' ${REPOS[$(($i+1))]} \"$branch\" ${REPOS[$(($i+3))]}"
-			done
-			echo ")"
-		else
-			echo "#REPOS=()"
-		fi
-		echo "#LINKS=()
-export VENDOR DEVICE PORT_ARCH RELEASE"
-	} > "$device_dir/env.sh"
+			TOOLING_RELEASE=\$RELEASE
+			SDK_RELEASE=latest
+			
+			export VENDOR DEVICE PORT_ARCH RELEASE" | tr -d '\t'
+	}  > "$device_dir/env.sh"
 }
 sfb_update_sfossdk_chroot() {
 	if [ -f "$SFOSSDK_ROOT/sdk-chroot" ]; then
@@ -138,7 +123,6 @@ sfb_device_env() {
 	export ANDROID_ROOT="$SFB_ROOT/src/$src_dir"
 	ANDROID_PRODUCT_OUT="$ANDROID_ROOT/out/target/product/$HABUILD_DEVICE"
 	SFB_LOCAL_MANIFESTS="$ANDROID_ROOT/.repo/local_manifests"
-	SFB_OVERRIDES_XML="$SFB_LOCAL_MANIFESTS/sfbootstrap-overrides.xml"
 	SB2_TOOLING_ROOT="$PLATFORM_SDK_ROOT/toolings/SailfishOS-$TOOLING_RELEASE"
 	SB2_TARGET_ROOT="$PLATFORM_SDK_ROOT/targets/$VENDOR-$DEVICE-$PORT_ARCH"
 	SFB_IMAGES="$SFB_ROOT/images/$VENDOR-$DEVICE-$PORT_ARCH"
@@ -155,7 +139,6 @@ sfb_device_env() {
 		if sfb_chroot_exists_sfossdk && ! sfb_chroot_exists_sb2_target; then
 			sfb_chroot_sb2_setup
 		fi
-		sfb_sync_extra_repos --clone-only
 		trap - EXIT
 	else
 		save_lastdevice
@@ -195,7 +178,6 @@ sfb_env_reset() {
 
 	rm_lastdevice
 	unset $known_vars SB2_TOOLING_ROOT SB2_TARGET_ROOT ANDROID_ROOT ANDROID_PRODUCT_OUT SFB_DEVICE
-	REPOS=() LINKS=() REPO_OVERRIDES=() HYBRIS_PATCHER_SCRIPTS=()
 }
 sfb_get_devices() { find "$SFB_ROOT"/device/* -maxdepth 0 -type d -printf '%f\n' 2>/dev/null; }
 sfb_pick_device() {
@@ -233,23 +215,7 @@ sfb_device_setup() {
 	fi
 	sfb_prompt "Target Sailfish OS release (e.g. $SFB_LATEST_SFOS_RELEASE):" RELEASE "^([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)$"
 	local ans
-	sfb_prompt "Add extra repositories to clone (y/N)?" ans "$SFB_YESNO_REGEX"
-	if [[ "${ans^^}" = "Y"* ]]; then
-		sfb_log "Adding extra repositories; enter nothing as the URL or directory at any point to stop!
-"
-		local url dir branch is_shallow
-		while true; do
-			sfb_prompt "Repo URL:" url
-			[ -z $url ] && break
-			sfb_prompt "Clone directory:" dir
-			[ -z $dir ] && break
-			sfb_prompt "Clone branch:" branch
-			sfb_prompt "Shallow clone (y/N)?" ans "$SFB_YESNO_REGEX"
-			[[ "${ans^^}" = "Y"* ]] && is_shallow=1 || is_shallow=0
-			REPOS+=("$url" "$dir" "$branch" "$is_shallow")
-			echo
-		done
-	fi
+	
 	sfb_device_new
 	sfb_device_env $SFB_DEVICE
 }
@@ -434,16 +400,6 @@ sfb_status() {
 	[ "$TOOLING_RELEASE" != "$RELEASE" ] && printf " (tooling: $TOOLING_RELEASE)"
 	echo "
    sdk:       $SDK_RELEASE"
-	if [ $repos -gt 0 ]; then
-		printf "   repos:     $repos"
-		if [ ${#REPO_OVERRIDES[@]} -gt 0 ]; then
-			printf " (${#REPO_OVERRIDES[@]} overrides)"
-		fi
-		echo
-	fi
-	if [ "$REPO_LOCAL_MANIFESTS_URL" ]; then
-		echo "   manifests: $REPO_LOCAL_MANIFESTS_URL"
-	fi
 	echo "   updated:   $(sfb_dir_update_date "$SFB_ROOT/device/$SFB_DEVICE")
    hooks:"
 	for i in $(seq 0 $(($hook_count-1))); do
@@ -589,7 +545,8 @@ sfb_main() {
 	sfb_checkdeps
 	sfb_load_modules
 	sfb_setupdevice
-
+	
+	
 	local func="sfb_$1"; shift
 	if declare -F "$func" >/dev/null; then
 		if [[ "$func" != "sfb_init" && -z "$SFB_DEVICE" ]]; then
