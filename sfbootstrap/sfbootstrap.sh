@@ -74,7 +74,7 @@ sfb_device_new() {
 				ANDROID_MAJOR_VERSION=$(sfb_get_droid_major_ver)
 				REPO_INIT_URL=\"https://github.com/Sailfishos-for-the-fairphone-4/android.git\"
 				# HYBRIS_PATCHER_SCRIPTS=()
-				HAL_MAKE_TARGETS=hybris-hal droidmedia
+				HAL_MAKE_TARGETS=(hybris-hal droidmedia)
 				HAL_ENV_EXTRA=\"\""  | tr -d '\t'
 		fi
 		echo "RELEASE=$RELEASE
@@ -546,7 +546,11 @@ sfb_main() {
 	sfb_load_modules
 	sfb_setupdevice
 	
-	
+	# global gets unset, so everytime we run, we need to reconfigure...
+	GIT_CLONE_PREFIX="https://github.com/"
+	# Check if an ssh-conenction with github could be established succesfully.
+	silent ssh -T git@github.com; [ $? -eq 1 ] && GIT_CLONE_PREFIX="git@github.com:"
+
 	local func="sfb_$1"; shift
 	if declare -F "$func" >/dev/null; then
 		if [[ "$func" != "sfb_init" && -z "$SFB_DEVICE" ]]; then

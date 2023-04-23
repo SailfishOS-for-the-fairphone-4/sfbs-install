@@ -119,9 +119,10 @@ sfb_sync_hybris_repos() {
 		sfb_log "Syncing $branch source tree with --force-sync"
 		sfb_chroot habuild "repo sync -j$SFB_JOBS --force-sync" || return 1
 	fi
-	
+
 	sfb_log "Cloning Libhybris into external"
-	sfb_git_clone_or_pull -b "android11" -u "git@github.com:mer-hybris/libhybris.git" -d "$ANDROID_ROOT/external/libhybris"
+	sfb_chroot habuild "$SUDO rm -rd external/libhybris"
+	sfb_git_clone_or_pull -b "android11" -u ""$GIT_CLONE_PREFIX"mer-hybris/libhybris.git" -d "$ANDROID_ROOT/external/libhybris"
 }
 
 sfb_sync() {

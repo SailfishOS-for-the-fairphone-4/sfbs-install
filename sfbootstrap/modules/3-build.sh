@@ -70,7 +70,7 @@ sfb_move_artifacts() {
 
 sfb_setup_rpm_build_packages(){
 	local HYBRIS="hybris"
-		GIT_URL="git@github.com:SailfishOS-for-the-fairphone-4/"
+		GIT_URL=""$GIT_CLONE_PREFIX"SailfishOS-for-the-fairphone-4/"
 	
 	sfb_log "$ANDROID_ROOT"
 	sfb_log $(pwd)
@@ -88,7 +88,6 @@ sfb_setup_rpm_build_packages(){
 	done
 	
 	sfb_chroot sfossdk sh -c "echo y | $(echo "$SFB_BP" | sed "s/build_packages/add_new_device/")" || return
-	sfb_chroot sfossdk sh -c "yes | sb2 -t $VENDOR-$DEVICE-$PORT_ARCH -R -msdk-install zypper install ccache" || return
 }
 
 sfb_build_packages() {

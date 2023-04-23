@@ -9,7 +9,8 @@ RESET="\e[0m"
 DIM="\e[2m"
 
 SFB_YESNO_REGEX="^([yY].*|[nN].*|)$"
- 
+
+
 # formatted string, desired color for formats
 sfb_printer()	{ 
 	[[ ! -z "$2" ]] && string=$(sed "s/{/\\$2/g; s/}/\\$RESET/g" <<< $1)

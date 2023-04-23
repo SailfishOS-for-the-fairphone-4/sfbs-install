@@ -44,14 +44,6 @@ DEPS=("git" "curl")
 CMDS=("init" "chroot setup" "sync" "build hal" "build packages")
 
 
-# Check if an ssh-conenction with github could be established succesfully.
-git_check_ssh(){
-	sfb_log "Checking GitHub-ssh-connection..."
-	silent ssh -T git@github.com; [ $? -eq 1 ] || return 0
-	sfb_succes "Git-ssh is successfully configured!"
-	return 1
-}
-
 # Install all the "needed" packages in the DEPS array.
 install_packages() {
 	local NOFAIL ans=""
@@ -100,9 +92,7 @@ start_installing(){
 
 setup_installer(){
 	local ans="" cmd prefill_ans arr_size=${#CMDS[@]}
-	
-	git_check_ssh; [ $? -eq 1 ] || return
-	
+
 	sfb_log "The next commands need te be run to complete the whole setup: "
 	for i in "${!CMDS[@]}"; do
 		sfb_printf "\t$(($i+1)): {${CMDS[i]}}" ${GREEN}
@@ -159,10 +149,10 @@ manual_sfossdk_setup(){
 
 
 main(){
-
 	# Envoke sudo password
 	sudo printf "${BLUE}>>${RESET} Starting the sfbootstrap-script...\n"
 	[ $? -ne 0 ] && return
+
 	
 	[  "$GET_VERSION" ] && rc get_version
 	[  "$INSTALL_PACKAGES" ] && rc install_packages
