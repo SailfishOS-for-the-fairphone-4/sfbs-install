@@ -109,7 +109,7 @@ sb2 -t $VENDOR-$DEVICE-$PORT_ARCH gcc test.c -o test &&
 sb2 -t $VENDOR-$DEVICE-$PORT_ARCH ./test;
 ret=$?
 rm test*;
-exit $ret' || sfb_exit "${SFB_C_LRED}Failed!${SFB_C_RESET}"
+exit $ret' || sfb_error "Failed!"
 	# && echo -e "${SFB_C_GREEN}Passed${SFB_C_RESET}"
 }
 
@@ -166,7 +166,7 @@ sfb_chroot_setup_ubu() {
 
 	$SUDO mkdir -p "$HABUILD_ROOT"/home/$USER
 	$SUDO chown -R $USER: "$HABUILD_ROOT"/home/$USER
-	ln -s /parentroot/home/$USER/.mersdk.profile "$HABUILD_ROOT"/home/$USER/.mersdkubu.profile
+	ln -s /parentroot/home/$USER/.mersdkubu.profile "$HABUILD_ROOT"/home/$USER/.mersdkubu.profile
 	ln -s /parentroot/home/$USER/.hadk.env "$HABUILD_ROOT"/home/$USER/.hadk.env
 	if [ -f "$SFOSSDK_ROOT/home/$USER/.gitconfig" ]; then
 		ln -s /parentroot/home/$USER/.gitconfig "$HABUILD_ROOT"/home/$USER/.gitconfig
@@ -215,7 +215,7 @@ sfb_chroot_setup_sfossdk() {
 	# setup proper env for non-interactive shell sessions
 	sfb_update_sfossdk_chroot
 	$SUDO sed -i "$SFOSSDK_CHROOT" \
-		-e '/^sudo oneshot.*/a [ $# -gt 0 ] && . ${HOMEDIR}/.mersdk.profile' \
+		-e '/^sudo oneshot.*/a [ $# -gt 0 ] && . ${HOMEDIR}/.mersdkubu.profile' \
 		-e '/echo "Mounting.*/ s|$| >/dev/null|' \
 		-e '/echo "Entering chroot as .*/ s|$| >/dev/null|'
 
@@ -228,7 +228,7 @@ sfb_chroot_setup_sfossdk() {
 
 	$SUDO mkdir -p "$SFOSSDK_ROOT"/home/$USER
 	$SUDO chown -R $USER: "$SFOSSDK_ROOT"/home/$USER
-	cat << EOF > "$SFOSSDK_ROOT"/home/$USER/.mersdk.profile
+	cat << EOF > "$SFOSSDK_ROOT"/home/$USER/.mersdkubu.profile
 export PATH=\$PATH:/sbin
 . ~/.hadk.env
 if [ -f "\$SFB_ROOT"/.lastdevice ]; then
