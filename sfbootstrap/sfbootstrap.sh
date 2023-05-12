@@ -126,7 +126,7 @@ sfb_device_env() {
 	SB2_TOOLING_ROOT="$PLATFORM_SDK_ROOT/toolings/SailfishOS-$TOOLING_RELEASE"
 	SB2_TARGET_ROOT="$PLATFORM_SDK_ROOT/targets/$VENDOR-$DEVICE-$PORT_ARCH"
 	SFB_IMAGES="$SFB_ROOT/images/$VENDOR-$DEVICE-$PORT_ARCH"
-	if [ ! -d "$ANDROID_ROOT" ]; then
+	if [ ! -d ~/hadk ]; then
 		mkdir -p "$ANDROID_ROOT"
 		ln -s $ANDROID_ROOT ~/hadk
 	fi
