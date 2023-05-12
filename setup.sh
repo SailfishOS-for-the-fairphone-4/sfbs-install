@@ -21,6 +21,7 @@ if [[ $# -eq 0 && -z "$1" ]]; then
     INSTALL=1 
 fi
 
+# Parse the given cmd args and set the corresponding variables
 eval set -- $OPTIONS
 while true; do
     case "$1" in
@@ -48,6 +49,7 @@ CMDS=("init" "chroot setup" "sync" "build hal" "build packages")
 install_packages() {
 	local NOFAIL ans=""
 	
+	# Install packages
 	sfb_log "Installing required packages..."
 	for pkg in ${DEPS[@]}; do
 		sfb_install "$pkg"
@@ -55,6 +57,7 @@ install_packages() {
 		[ $? -ne 0 ] && NOFAIL=0
 	done
 	
+	# Check if all packages are installed without errors
 	if [ ! -z "$NOFAIL" ]; then
 		sfb_prompt "Some packages failed to install! upgrade apt and try again (Y/n)?" ans "$SFB_YESNO_REGEX"
 		[[ "${ans^^}" != "Y"* ]] && return
@@ -66,13 +69,14 @@ install_packages() {
 	fi
 }
 
-
+# Selection menu for the user to choose which component(s) to install and installing them
 start_installing(){
 	local ans="" start=1 end=$1
 	
 	# base case
 	[ -z "$1" ] && return
-	
+
+	# prompt options to choose from
 	sfb_printf "\tA: {Single}: ${CMDS[$(($1-1))]}" ${GREEN}
 	sfb_printf "\tB: {Sequence}: ${CMDS[0]} -->  ${CMDS[$(($1-1))]}" ${GREEN} 
 	sfb_prompt "Do you want the run \"Single\"(A) or \"Sequence\"(B) (A/B)?" ans "[a-bA-B]" $2
@@ -89,15 +93,17 @@ start_installing(){
 	done
 }
 
-
+# Select which command to run
 setup_installer(){
 	local ans="" cmd prefill_ans arr_size=${#CMDS[@]}
 
+	# List all availible commands
 	sfb_log "The next commands need te be run to complete the whole setup: "
 	for i in "${!CMDS[@]}"; do
 		sfb_printf "\t$(($i+1)): {${CMDS[i]}}" ${GREEN}
 	done
 
+	# Prompt for which command to run
 	sfb_prompt "What command do you want to run (all/(1-$arr_size))?" ans "[a-z1-$arr_size]"
 	answer="${ans^^}"
 	if [[ "$answer" == "A"* ]]; then
@@ -113,20 +119,26 @@ setup_installer(){
 	start_installing $cmd $prefill_ans 
 }
 
+# Get the current version of sfbs-install
 get_version() { echo "sfbs-install 2.0"; }
 
+# Setup the whole build environment
 manual_sfossdk_setup(){
+	# Export all device variables 
 	if [ ! -d $HOME/.hadk.env ]; then
 		echo "export ANDROID_ROOT=\"\$HOME/hadk\"
 			export VENDOR=\"fairphone\"
 			export DEVICE=\"FP4\"
 			export PORT_ARCH=\"aarch64\"" | tr -d '\t' > $HOME/.hadk.env 		
 	fi
+	# Initialize hadk.env and create a profile
 	if [ ! -d $HOME/.mersdkubu.profile ]; then
 		echo "function hadk() { source \$HOME/.hadk.env; echo \"Env setup for \$DEVICE\"; }
 			hadk
 			export PS1=\"HABUILD_SDK [\${DEVICE}] \$PS1\"" | tr -d '\t' > $HOME/.mersdkubu.profile
 	fi
+
+	# Add setup for build environment to bashrc
 	if ! grep -Fxq "#__sfossdk" ~/.bashrc; then
 		echo "#__sfossdk
 			export PLATFORM_SDK_ROOT=/srv/sailfishos
@@ -143,11 +155,12 @@ manual_sfossdk_setup(){
 			fi" | tr -d '\t' >> ~/.bashrc
 	fi
 	
+	# Source bashrc
 	sfb_log " sourcing ~/.bashrc...Run \"sfossdk\" to enter the manual environment."
 	. ~/.bashrc
 }
 
-
+# Main function
 main(){
 	# Envoke sudo password
 	sudo printf "${BLUE}>>${RESET} Starting the sfbootstrap-script...\n"
@@ -159,4 +172,6 @@ main(){
 	[  "$ENABLE_MANUAL_SETUP" ] && rc manual_sfossdk_setup
 	[  "$INSTALL" ] && setup_installer;
 }
+
+# Run main
 main

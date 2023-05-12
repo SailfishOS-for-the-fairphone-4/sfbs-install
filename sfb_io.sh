@@ -1,5 +1,6 @@
 #!/bin/sh
 
+# Color macro's
 BLUE="\e[01;96m" 
 RED="\e[01;91m"
 ORANGE="\e[01;33m" 
@@ -18,6 +19,7 @@ sfb_printer()	{
 	echo -e $(sed "s/{//g; s/}//g" <<< $string) $3
 }
 
+# Custom formatted print commands
 sfb_printf()	{ sfb_printer "$1" $2 ; }
 sfb_log() 	{ sfb_printer "{>>} $1" ${BLUE}; }
 sfb_install()	{ sfb_printer "{INSTALL: }$*" ${ORANGE}; }
@@ -25,10 +27,12 @@ sfb_succes()	{ sfb_printer "{SUCCES: }$*" ${GREEN}; }
 sfb_warn() 	{ sfb_printer "{WARN: }$*" ${YELLOW} 1>&2; }
 sfb_error() 	{ sfb_printer "{ERROR: }$*" ${RED} 1>&2; exit ${2:-1}; }
 
+# Custom functions for output control
 return_control(){ "$@" || return ; }
 silent()	{ return_control "$@"&>/dev/null; }
 sfb_dbg() { [[ $SFB_DEBUG -eq 1 ]] && echo -e "${DIM}[DEBUG] $(caller 0 | awk '{printf "%s:%d",$2,$1}'): $1${RESET}" 1>&2; }
 
+# Function to parse option selection
 sfb_prompt() {
 	local msg="$1" var="$2" match_regex="$3" prefill_ans="$4" loop=true
 	while $loop; do
