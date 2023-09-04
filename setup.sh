@@ -37,12 +37,45 @@ while true; do
 done
 
 # Source I/O
-. sfb_io.sh
+. ./sfb_io.sh
 
 # Add possibility to return whenever...
 alias rc=return_control
 DEPS=("git" "curl")
 CMDS=("init" "chroot setup" "sync" "build hal" "build packages")
+
+# Check distro to set package manager
+if command -v lsb_release &> /dev/null; then
+    DISTRO=$(lsb_release -i | awk '{print toupper($3)}')
+else
+    echo "lsb_release not found, please enter your distro name: "
+    read -r distro
+    DISTRO=$(echo "$distro" | awk '{print toupper($0)}')
+fi
+
+# Default Variables(assumes ubuntu)
+PACKAGEMANAGER="apt-get" 
+UPDATE_COMMAND="update"
+UPGRADE_COMMAND="upgrade"
+NOCONFIRM_COMMAND="-y"
+INSTALL_COMMAND="install"
+
+# Non-default distro options
+if [[ "$DISTRO" = "ARCH" || "$DISTRO" = "MANJARO" ]]; then
+    PACKAGEMANAGER="pacman"
+    UPDATE_COMMAND="-Syy"
+    UPGRADE_COMMAND="-Su"
+    NOCONFIRM_COMMAND="--noconfirm"
+	INSTALL_COMMAND="-S"
+elif [[ "$DISTRO" = "FEDORA" || "$DISTRO" = "CENTOS" || "$DISTRO" = "REDHATENTERPRISELINUX" ]]; then    
+	PACKAGEMANAGER="dnf"
+    UPDATE_COMMAND="upgrade --refresh"
+    UPGRADE_COMMAND="upgrade"
+    NOCONFIRM_COMMAND="-y"
+    INSTALL_COMMAND="install"
+else 
+	sfb_log "No options set in script for distro $DISTRO. If your distro doesn't use apt, please add the appropriate variables within this script"
+fi
 
 
 # Install all the "needed" packages in the DEPS array.
@@ -53,16 +86,16 @@ install_packages() {
 	sfb_log "Installing required packages..."
 	for pkg in ${DEPS[@]}; do
 		sfb_install "$pkg"
-		silent sudo apt-get -y install $pkg;
+		silent sudo $PACKAGEMANAGER $NOCONFIRM_COMMAND $INSTALL_COMMAND $pkg;
 		[ $? -ne 0 ] && NOFAIL=0
 	done
 	
 	# Check if all packages are installed without errors
 	if [ ! -z "$NOFAIL" ]; then
-		sfb_prompt "Some packages failed to install! upgrade apt and try again (Y/n)?" ans "$SFB_YESNO_REGEX"
+		sfb_prompt "Some packages failed to install! upgrade $PACKAGEMANAGER and try again (Y/n)?" ans "$SFB_YESNO_REGEX"
 		[[ "${ans^^}" != "Y"* ]] && return
-		sfb_log "Upgrading apt... \n\t Please Wait..."
-		silent sudo apt update && silent sudo apt -y upgrade
+		sfb_log "Upgrading $PACKAGEMANAGER... \n\t Please Wait..."
+		silent sudo $PACKAGEMANAGER $UPDATE_COMMAND && silent sudo $PACKAGEMANAGER $NOCONFIRM_COMMAND $UPGRADE_COMMAND
 		install_packages
 	else
 		sfb_succes "All packages are succesfully installed!"	
