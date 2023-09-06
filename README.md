@@ -58,4 +58,7 @@ To enter habuild (switch_root), run "habuild"
 * `~/.ssh/id_rsa.pub` (used for setting up SSH  with GitHub)
 
 
-Sfbs-install is inspired by [this repository](https://github.com/JamiKettunen/sfbootstrap/tree/28d3f685db04a203242a14363cee30f74eab7a65). We modified/patched the script so it would also work for the Fairphone 4.
+Sfbs-install is inspired by [this repository](https://github.com/JamiKettunen/sfbootstrap/tree/28d3f685db04a203242a14363cee30f74eab7a65). We modified/patched the script so it would also work for the Fairphone 4.  
+
+For additional modules like parse_android_dynparts and sfpd-community. These need to be added after the installation is complete.
+
